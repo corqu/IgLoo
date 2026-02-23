@@ -60,7 +60,7 @@ public class UserLockExecutor {
         try {
             for (Long uid : ids) {
                 RLock lock = redissonClient.getLock(RedisKeys.userLock(uid));
-                boolean locked = lock.tryLock(3, 5, TimeUnit.SECONDS);
+                boolean locked = lock.tryLock(3,  TimeUnit.SECONDS);
                 if (!locked) throw new ApiException(ErrorCode.LOCK_ACQUISITION);
                 locks.add(lock);
             }

@@ -71,7 +71,7 @@ public class BidService {
         Long previousBidderId;
         BigDecimal currentPrice;
         try{
-            boolean available = lock.tryLock(3, 3, TimeUnit.SECONDS);
+            boolean available = lock.tryLock(3,  TimeUnit.SECONDS);
             // 입찰 조건 확인 로직
 
             if (!available){
@@ -204,7 +204,7 @@ public class BidService {
             throw e;
         } finally {
             // 락 해제
-            if (lock.isHeldByCurrentThread()){
+            if (auctionLocked || lock.isHeldByCurrentThread()){
                 lock.unlock();
             }
         }
