@@ -13,40 +13,10 @@
 ## 목차
 
 - [프로젝트 소개](#프로젝트-소개)
-- [핵심 차별화 포인트](#핵심-차별화-포인트)
-- [핵심 기능](#핵심-기능)
-- [시스템 아키텍처](#시스템-아키텍처)
-- [DB/ERD](#dberd)
-- [리포지토리 구조](#리포지토리-구조)
 - [기술 스택](#기술-스택)
-- [주요 도메인](#주요-도메인)
-- [사전 요구사항](#사전-요구사항)
-- [실행 방법](#실행-방법)
-- [테스트](#테스트)
-- [서비스 접속 및 API 문서](#서비스-접속-및-api-문서)
-- [환경 변수](#환경-변수)
-
----
-## 🛠️ My Role & Contributions
-
-프로젝트의 안정적인 운영을 위한 인프라 설계와 데이터 기반의 실시간 추천 엔진 구축을 주도했습니다.
-
-### 1. 백엔드 핵심 기능 및 실시간 추천 엔진 설계
-* **Redis 기반 실시간 로그 분석:** 사용자 클릭 로그를 **Redis**에 실시간 적재하여 데이터 접근 속도를 최적화한 캐싱 구조 설계.
-* **유사도 측정 기반 하이브리드 추천 로직 (RecommendList):**
-    * **협업 필터링(Collaborative Filtering):** 특정 상품을 클릭한 사용자들의 행동 패턴 유사도를 측정하여 맞춤형 상품을 노출하는 로직 구현.
-    * **Cold Start 문제 해결:** 신규 상품이 소외되지 않도록 '유사 사용자 소비 상품'과 '신규 등록 상품'을 가중치 기반으로 혼합(Hybrid)하여 추천의 다양성 확보.
-* **Admin 서비스 구현:** 추천 로직의 가중치 파라미터를 실시간으로 조정하고 전체 데이터를 관리할 수 있는 운영 대시보드 구축.
-
-### 2. 인프라 구축 및 CI/CD 파이프라인 자동화
-* **AWS 클라우드 아키텍처 설계:** EC2, RDS를 활용하여 확장 가능한 서버 환경을 구축하고 보안 그룹 및 네트워크 설정 관리.
-* **GitHub Actions 기반 배포 자동화:** 코드 push 시 자동 빌드 및 배포가 이루어지는 CI/CD 파이프라인을 구축하여 배포 주기 단축 및 운영 안정성 강화.
-
-### 3. 코드 품질 관리 및 테스트
-* **k6 기반 테스트 환경 구축:** 프로젝트 핵심 로직에 대한 S6 기반 테스트 시나리오를 설계하고 유닛/통합 테스트를 수행하여 배포 전 버그 발생률 최소화.
-
----
-
+- [주요 기여](#주요-기여)
+- [설계 이유](#설계-이유)
+- [트러블 슈팅](#트러블-슈팅)
 
 ## 프로젝트 소개
 
@@ -56,75 +26,6 @@
   - `경매 등록 -> 입찰 -> 낙찰/유찰 처리 -> 주문/배송 -> 정산`
 
 - 기존 중고거래의 **기다리는 판매**를 줄이고, 짧은 시간 안에 거래 성사를 목표로 함
-
----
-
-## 핵심 차별화 포인트
-
-| 비교 항목 | IgLoo (로컬 기반 실시간 경매)                         | 일반 장기 경매 서비스 |
-| --------- | ----------------------------------------------------- | --------------------- |
-| 경매 기간 | 초단기 운영 (1시간 / 3시간 / 6시간 / 12시간 / 24시간) | 수일 단위 경매 중심   |
-| 거래 방식 | 직거래 + 택배 하이브리드                              | 택배 중심             |
-| 편의사항  | 경매 게시글 AI 보조 등록                              | 직접 등록             |
-| 게시글 등록  | 경매 게시글 AI 보조 등록                              | 직접 등록             |
-| 안전 장치 | 결제/충전/지갑 기반 자금 보호 흐름                    | 플랫폼 정책 중심      |
-
----
-
-## 핵심 기능
-
-- 초단기 경매 운영 및 실시간 입찰 상태 동기화 (STOMP/WebSocket)
-- 경매 마감 임박 처리, 마감/결과 전환 스케줄링
-- 낙찰 후 주문 생성 및 거래 방식 선택(직거래/택배)
-- 결제 승인, 충전금 관리, 환불/취소 처리
-- 지갑/락 잔액 기반 입찰 자금 보호 및 정산 연계
-- 사용자 신고/차단 및 운영자 처리 플로우
-- AI 서비스 연동(이미지 분석, 카테고리 분류, 설명 생성)
-- 관심사가 비슷한 사람을 추려 상품 추천 기능
-
----
-
-## 시스템 아키텍처
-
-![System Architecture](https://github.com/user-attachments/assets/92f3639e-4c8f-456d-9a45-bd3e9c55fbc1)
-
-- 사용자는 Vercel에 배포된 React SPA로 접속, API 요청은 Nginx Reverse Proxy를 통해 Spring Boot 서버로 라우팅
-- 실시간 경매 흐름은 STOMP/SockJS 기반 WSS 채널로 처리, 입찰 상태와 이벤트가 즉시 동기화
-- 백엔드는 핵심 거래 데이터를 AWS RDS(MySQL)에 저장, Redis/Redisson으로 캐시와 분산 락을 관리
-- 이미지 업로드/조회는 S3 Object Storage 사용, AI 분석 요청은 FastAPI AI Service를 거쳐 OpenAI API로 전달
-- 배포는 GitHub Actions가 Docker 이미지를 빌드해 Docker Hub에 반영, AWS 환경에 백엔드/AI 서비스로 배포
-
----
-
-## DB/ERD
-
-![ERD](https://github.com/user-attachments/assets/55b004c2-b4e1-4cbc-a816-6640b867c674)
-
-- DB 명세: [Notion DB 명세서](https://free-nutmeg-5e5.notion.site/DB-2ef4a9f8e43980c8a656fb2eb2f82daa)
-
----
-
-## 리포지토리 구조
-
-```text
-IgLoo/
-├── backend/                 # Spring Boot API 서버
-├── ai-service/              # FastAPI 기반 AI 보조 서비스
-├── nginx/                   # Nginx 설정
-├── redis/                   # Redis 설정
-├── docs/                    # 프로젝트 문서
-├── prometheus.yml           # 모니터링 수집 설정
-├── docker-compose.yml       # 서버/배포용 compose (이미지 기반)
-├── local-docker-compose.yml # 로컬 인프라용 compose (redis/mysql/nginx)
-└── README.md
-```
-
-프론트엔드는 별도 저장소로 운영
-
-- 저장소: [IgLooFE](https://github.com/team-noonchissaum/IgLooFE)
-- 배포: Vercel 파이프라인 기반 별도 관리
-
----
 
 ## 기술 스택
 
@@ -148,171 +49,100 @@ IgLoo/
   - Nginx
   - AWS S3
 
----
+## 주요 기여
 
-## 주요 도메인
+### 1. 입찰 시스템 설계 및 구현
 
-- `auction`: 경매 등록/조회, 입찰, 실시간 상태 동기화, 스케줄링
-- `order`: 낙찰 이후 주문 생성, 거래 방식(직거래/택배), 배송 처리
-- `wallet`: 잔액/락 잔액, 거래별 지갑 기록, 출금 처리
-- `payment`: 결제 승인/검증, 취소/환불, 거래 금액 정합성 처리
-- `auth`: JWT 기반 인증/인가, OAuth2 로그인 연동
-- `notification`: 경매 상태/입찰/주문 이벤트 알림 전송
-- `task`: 비동기 작업 상태 저장/복구, 대기 작업 검증
-- `report`: 신고 접수/처리 및 운영자 처리 흐름
-- `ai`: 이미지 분석, 카테고리 분류, 상품 설명 생성, 백엔드 연동 API 제공
+- **Redis 기반 입찰 처리 구조 설계**  
+  실시간 입찰 환경에서 빠른 응답 속도를 확보하기 위해 Redis를 입찰 정보의 원천 데이터로 활용하고, DB에는 비동기적으로 동기화하는 구조를 설계했습니다.
 
----
+- **비동기 DB 반영 구조 구현**  
+  입찰 요청에 대한 응답 지연을 줄이기 위해 Redis에 우선 반영한 뒤, 별도 비동기 처리로 DB에 동기화되도록 구현했습니다.
 
-## 사전 요구사항
+- **Redisson Lock 적용**  
+  동시 입찰 상황에서 처리 순서가 꼬이거나 데이터 정합성이 깨지는 문제를 방지하기 위해 Redisson Lock을 적용했습니다.
 
-- Docker / Docker Compose
-- Java 21 (백엔드 로컬 실행 시)
-- Python 3.10+ (AI 서비스 로컬 실행 시)
-- 사용 포트
-  - `3000` (Frontend)
-  - `8080` (Backend)
-  - `8001` (AI Service)
-  - `3306` (MySQL)
-  - `6379` (Redis)
+### 2. 추천 기능 구현
 
-포트 충돌 시 실행 중인 프로세스 종료 또는 포트 변경 후 실행
+- **Jaccard 유사도 기반 추천 로직 구현**  
+  사용자 간 행동 유사도를 계산해, 관심사가 비슷한 사용자의 소비 패턴을 바탕으로 추천 상품 리스트를 구성했습니다.
 
----
+- **Cold Start 대응 로직 설계**  
+  관심을 받지 못한 신규 매물이 추천에서 소외되지 않도록 별도 리스트로 관리하고, 기존 추천 상품과 4:1 비율로 혼합 노출되도록 구성했습니다.
 
-## 실행 방법
+### 3. CI/CD 구축
 
-### 1) 서버/배포용 Compose 실행
+- **배포 자동화 환경 구성**  
+  GitHub Actions와 Docker를 활용해 빌드 및 배포 과정을 자동화하는 CI/CD 파이프라인을 구축했습니다.
 
-루트 `.env` 파일 기준 실행
+### 4. 테스트 환경 구성 및 성능 개선
 
-```bash
-docker compose up -d
-```
+- **k6 기반 테스트 환경 구축**  
+  핵심 로직 검증을 위한 부하 테스트 환경을 구성하고 시나리오를 작성했습니다.
 
-### 2) 로컬 개발 실행
+- **테스트 기반 코드 개선**  
+  테스트 결과를 바탕으로 병목 지점을 확인하고 코드를 수정해 유의미한 성능 개선 결과를 도출했습니다.
 
-1. 로컬 인프라 실행
+## 설계 이유
 
-```bash
-docker compose -f local-docker-compose.yml up -d
-```
+### Redis를 정보의 원천으로 사용한 이유
 
-2. AI 서비스 실행
+- 실시간 경매 특성상 입찰 정보가 짧은 시간 안에 계속 변경되기 때문에, 이를 DB에서 직접 관리할 경우 호출이 많아지고 성능 저하가 발생할 수 있다고 판단했습니다.
+- 빠른 응답 속도를 확보하기 위해 입찰 정보는 Redis에 실시간으로 반영하고, DB에는 비동기적으로 동기화하는 구조로 설계했습니다.
+- 또한 동시 입찰 상황에서 Redis 업데이트 순서가 꼬이지 않도록 Redisson Lock을 적용해 처리 순서를 보장했습니다.
 
-```bash
-cd ai-service
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
-```
+### 부하 테스트 환경을 설계한 이유
 
-3. 백엔드 실행
+- 실시간 입찰 서비스 특성상 다수의 사용자가 동시에 입찰할 때 서버가 어느 수준까지 안정적으로 동작하는지 확인할 필요가 있었습니다.
+- 이를 위해 k6 기반 테스트 환경을 구성하고, Grafana와 Prometheus를 연동해 서버 상태와 병목 지점을 모니터링할 수 있도록 설계했습니다.
+- 서버 사양을 고려해 최대 200명의 사용자가 동시에 입찰하는 상황을 가정해 테스트를 진행했고, 로그와 모니터링 결과를 바탕으로 병목이 발생하는 코드를 찾아 수정했습니다.
 
-Mac/Linux:
+### 정합성을 보완하기 위한 설계
 
-```bash
-cd backend
-./gradlew bootRun
-```
+- Redis를 원천 데이터로 사용하고 DB에는 비동기적으로 동기화하는 구조에서는, 동기화 과정에서 누락이 발생할 가능성이 있다고 판단했습니다.
+- 이를 보완하기 위해 Redis에 진행 중인 작업 상태를 별도의 Key-Value 형태로 관리하고, Batch를 통해 DB 동기화가 정상적으로 이뤄졌는지 점검하도록 설계했습니다.
+- 이를 통해 시스템이 스스로 오류를 복구할 수 있는 구조를 지향했으며, 자동 복구가 어려운 예외 상황은 운영자가 확인하고 직접 수정할 수 있도록 구성했습니다.
 
-Windows:
+## 트러블 슈팅
 
-```powershell
-cd backend
-.\gradlew.bat bootRun
-```
+### Redis 기반 입찰 처리와 DB 기반 일반 기능이 분리되어 발생한 정합성 문제
 
----
+**문제 상황**  
+실시간성이 중요한 입찰 처리에는 Redis를 사용했고, 그 외 대부분의 기능은 DB를 기준으로 동작하도록 구현했습니다.  
+그런데 입찰 결과가 Redis에 먼저 반영되고 DB에는 비동기적으로 동기화되는 구조이다 보니, 일반 기능이 아직 동기화되지 않은 DB 데이터를 참조하는 문제가 발생할 수 있었습니다.
 
-## 테스트
+**원인 분석**  
+입찰 처리 자체는 Redis를 활용해 빠르게 처리할 수 있었지만, 이후 일반 기능들은 DB를 기준으로 동작하고 있었습니다.  
+이 때문에 Redis와 DB 간 동기화가 완료되기 전에 DB를 참조하면 최신 입찰 상태가 반영되지 않은 데이터를 사용할 가능성이 있었습니다.
 
-`test`는 전체 테스트, `unitTest`와 `integrationTest`는 유형별 분리 실행용
+**해결 방법**  
+이 문제를 해결하기 위해 RedissonLock을 추가로 활용해, DB와 Redis 간 동기화 작업이 남아 있는지 확인하는 구간을 두었습니다.  
+동기화가 완료되지 않은 상태에서는 일반 기능이 섣불리 DB를 참조하지 않도록 제어해 데이터 흐름이 꼬이지 않도록 보완했습니다.
 
-Mac/Linux:
-
-```bash
-cd backend
-./gradlew test
-./gradlew unitTest
-./gradlew integrationTest
-```
-
-Windows:
-
-```powershell
-cd backend
-.\gradlew.bat test
-.\gradlew.bat unitTest
-.\gradlew.bat integrationTest
-```
+**결과**  
+실시간 입찰 처리에서는 Redis의 장점을 유지하면서도, 일반 기능이 DB를 사용할 때 발생할 수 있는 정합성 문제를 줄일 수 있었습니다.  
+이를 통해 저장소가 분리된 구조에서도 보다 안정적으로 입찰 후속 처리가 가능하도록 개선했습니다.
 
 ---
 
-## 서비스 접속 및 API 문서
+### RedissonLock 범위 최적화를 통한 성능 개선
 
-- 프론트엔드 (로컬): `http://localhost:3000`
-- 프론트엔드 (배포): `https://ig-loo-fe-89f2.vercel.app/`
-- API 서버 (로컬): `http://localhost:8080`
-- 인증: JWT 기반 인증/인가 (Spring Security)
-- 실시간 통신: STOMP(WebSocket) 기반 경매/알림 메시징
-- API 명세: [Notion API 명세서](https://free-nutmeg-5e5.notion.site/API-2f04a9f8e4398062bd14c52c4864f5ea)
-- 보조 문서: [거래 흐름](docs/used-market-flow.md), [구현 로그](docs/used-market-implementation-log.md)
+**문제 상황**  
+k6 기반 부하 테스트를 진행하던 중, 동시 입찰 상황에서 처리 지연이 예상보다 크게 발생하는 구간을 확인했습니다.
+
+**원인 분석**  
+입찰 처리 과정에서 RedissonLock 내부에 꼭 포함되지 않아도 되는 작업까지 함께 수행되고 있었고, 이로 인해 락 점유 시간이 길어지면서 병목이 발생하고 있었습니다.  
+결과적으로 동시 요청이 많아질수록 락 대기 시간이 증가해 전체 처리 성능이 저하되는 문제가 있었습니다.
+
+**해결 방법**  
+락이 반드시 필요한 공유 자원 접근 구간만 RedissonLock 내부에 두고, 나머지 작업은 락 범위 바깥으로 분리하도록 리팩토링했습니다.  
+이를 통해 락 점유 시간을 줄이고, 동시 요청 처리 효율을 높일 수 있도록 개선했습니다.
+
+**결과**  
+리팩토링 후 k6 테스트를 다시 진행한 결과, 기존 대비 약 40%의 성능 향상을 확인할 수 있었습니다.
 
 ---
 
-## 환경 변수
+## 팀 레포지토리 링크
 
-기준 파일:
-
-- `backend/src/main/resources/application.yml`
-- `backend/src/test/resources/application-test.yml`
-
-로컬 개발에서는 `.env.dev`(IntelliJ 실행용) 또는 `.env` 사용
-
-아래 키를 환경별로 설정
-
-```env
-# DB
-DB_URL=
-DB_USERNAME=
-DB_PASSWORD=
-MYSQL_ROOT_PASSWORD=
-
-# Redis
-REDIS_HOST=
-REDIS_PORT=
-REDIS_PASSWORD=
-
-# Auth / OAuth
-JWT_SECRET=
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-KAKAO_CLIENT_ID=
-KAKAO_CLIENT_SECRET=
-NAVER_CLIENT_ID=
-NAVER_CLIENT_SECRET=
-
-# Payment / External
-TOSS_CLIENT_KEY=
-TOSS_SECRET_KEY=
-SWEETTRACKER_API_KEY=
-
-# AWS
-AWS_ACCESS_KEY=
-AWS_SECRET_KEY=
-AWS_S3_BUCKET=
-
-# Mail
-MAIL_USERNAME=
-MAIL_PASSWORD=
-MAIL_HOST=
-MAIL_PORT=
-
-# App
-FRONT_BASE_URL=
-KAKAO_MAP_REST_API_KEY=
-AI_SERVICE_BASE_URL=
-
-# AI Service
-OPENAI_API_KEY=
-OPENAI_MODEL=
-```
+[Team NoonchiSsaum](https://github.com/team-noonchissaum/IgLoo)
